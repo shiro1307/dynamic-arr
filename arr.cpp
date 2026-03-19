@@ -1,89 +1,54 @@
 #include <iostream>
+#include <utility>
+#include <stdexcept>
 using namespace std;
 
 template <typename T>
-class Arr{
+class Arr {
+    T* data;
+    size_t size;
+    size_t capacity;
 
-    T *data;
-    int size;
-    int capacity;
+    void resize(size_t newCapacity) {
+        if (newCapacity < size)
+            newCapacity = size;
 
-    void resize(int newCapacity){
-        T *newdata = new T[newCapacity];
+        T* newdata = new T[newCapacity];
 
-        for (size_t i=0; i<size; i++){
-            newdata[i] = data[i];
+        try {
+            for (size_t i = 0; i < size; i++)
+                newdata[i] = std::move(data[i]);
+        } catch (...) {
+            delete[] newdata;
+            throw;
         }
+
         delete[] data;
         data = newdata;
         capacity = newCapacity;
     }
 
-    public:
-
-    Arr(){
-        size = 0;
-        capacity = 2;
+public:
+    Arr() : data(nullptr), size(0), capacity(2) {
         data = new T[capacity];
     }
 
-    ~Arr(){
+    ~Arr() {
         delete[] data;
     }
 
-    /*
-    void append(const T& x){
-        if (size == capacity){
-            resize(capacity + capacity/8 + 5);
-        }
-        //data[size++] = x;
-        new (&data[size]) T(x);
-        size++;
-    }
-    */
+    // Copy constructor
+    Arr(const Arr& other) {
+        size = other.size;
+        capacity = other.capacity;
+        data = new T[capacity];
 
-    template <typename... Args>
-    void append(Args&&... args) {
-        if (size == capacity)
-            resize(capacity + capacity/8 + 5);
-        new (&data[size]) T(std::forward<Args>(args)...);
-        size++;
+        for (size_t i = 0; i < size; i++)
+            data[i] = other.data[i];
     }
 
-    void pop(){
-        if (size > 0){
-            size--;
-
-            if (size <= capacity/4 && capacity > 2) {
-                resize(capacity/2 + 2);
-            }
-
-        }
-    }
-
-    T& operator[](int index){
-        if(index < 0 || index >= size)
-            throw out_of_range("Index out of bounds");
-        return data[index];
-    }
-
-    int getSize() const{
-        return size;
-    }
-
-    void print() const{
-        cout << "[";
-        for (int i=0; i<size; i++){
-            cout << data[i];
-            if (i<size-1){
-                cout << ", ";
-            }
-        }
-
-        cout << "]" << endl;
-    }
-
-    Arr(Arr&& other) {
+    // Move constructor
+    Arr(Arr&& other) noexcept {
         data = other.data;
         size = other.size;
         capacity = other.capacity;
@@ -93,29 +58,28 @@ class Arr{
         other.capacity = 0;
     }
 
-    Arr(const Arr& other) {
-        size = other.size;
-        capacity = other.capacity;
-        data = new T[capacity];
-        for (int i = 0; i < size; i++)
-            data[i] = other.data[i];
-    }
-
+    // Copy assignment
     Arr& operator=(const Arr& other) {
         if (this != &other) {
+            T* newdata = new T[other.capacity];
+
+            for (size_t i = 0; i < other.size; i++)
+                newdata[i] = other.data[i];
+
             delete[] data;
+
+            data = newdata;
             size = other.size;
             capacity = other.capacity;
-            data = new T[capacity];
-            for (int i = 0; i < size; i++)
-                data[i] = other.data[i];
         }
         return *this;
     }
 
-    Arr& operator=(Arr&& other) {
+    // Move assignment
+    Arr& operator=(Arr&& other) noexcept {
         if (this != &other) {
             delete[] data;
+
             data = other.data;
             size = other.size;
             capacity = other.capacity;
@@ -127,6 +91,67 @@ class Arr{
         return *this;
     }
 
+    // Append (copy)
+    void append(const T& x) {
+        if (size == capacity)
+            resize(capacity * 2);
+
+        data[size++] = x;
+    }
+
+    // Append (move)
+    void append(T&& x) {
+        if (size == capacity)
+            resize(capacity * 2);
+
+        data[size++] = std::move(x);
+    }
+
+    void pop() {
+        if (size > 0) {
+            size--;
+
+            if (size <= capacity / 4 && capacity > 2)
+                resize(capacity / 2);
+        }
+    }
+
+    T& operator[](size_t index) {
+        if (index >= size)
+            throw out_of_range("Index out of bounds");
+        return data[index];
+    }
+
+    const T& operator[](size_t index) const {
+        if (index >= size)
+            throw out_of_range("Index out of bounds");
+        return data[index];
+    }
+
+    size_t getSize() const {
+        return size;
+    }
+
+    size_t getCapacity() const {
+        return capacity;
+    }
+
+    bool empty() const {
+        return size == 0;
+    }
+
+    void clear() {
+        size = 0;
+    }
+
+    void print() const {
+        cout << "[";
+        for (size_t i = 0; i < size; i++) {
+            if (i) cout << ", ";
+            cout << data[i];
+        }
+        cout << "]\n";
+    }
 };
 
 int main() {
